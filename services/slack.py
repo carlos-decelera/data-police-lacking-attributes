@@ -22,8 +22,9 @@ async def send_slack_alert(message: str, record_url: str):
         ]
     }
 
-    async with httpx.AsyncClient as client:
+    async with httpx.AsyncClient() as client:
         try:
             await client.post(webhook_url, json=payload)
         except Exception as e:
+
             print(f"Error enviando a Slack: {e}")
