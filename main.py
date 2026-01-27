@@ -24,7 +24,7 @@ async def handle_company_created(event: dict):
     if missing:
         name = get_record_name(record)
         msg = f"Nueva compañía *{name}* incompleta. Faltan: `{', '.join(missing)}`"
-        url = f"https://app.attio.com/w/workspace/record/{record_id}"
+        url = f"https://app.attio.com/deceleraventures/company/{record_id}"
         await send_slack_alert(msg, url)
 
 
@@ -44,7 +44,7 @@ async def handle_fast_track_entry(event: dict):
     if missing:
         name = get_record_name(record)
         msg = f"*{name}* movida a Fast Tracks sin datos. Faltan: `{', '.join(missing)}`"
-        url = f"https://app.attio.com/w/workspace/record/{parent_record_id}"
+        url = f"https://app.attio.com/deceleraventures/company/{parent_record_id}"
         await send_slack_alert(msg, url)
 
 
@@ -79,3 +79,4 @@ async def receive_attio_webhook(request: Request, bg_tasks: BackgroundTasks):
 
 
     return {"status": "ok"}
+
