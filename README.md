@@ -1,3 +1,4 @@
+```mermaid
 graph TD
     A[Webhook de Attio] -->|POST /missing-fields| B(main.py: receive_attio_webhook)
     B --> C{¿Actor es miembro?}
