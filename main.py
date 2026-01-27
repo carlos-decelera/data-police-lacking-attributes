@@ -29,59 +29,45 @@ async def handle_company_created(event: dict):
 
 
 async def handle_fast_track_entry(event: dict):
-    """Caso 2: Se añade una entrada a la lista Fast Tracks"""
-    # Obtenemos IDs del evento
+    """Caso 2: Entrada en lista (Fast Tracks)"""
     list_id = event.get("id", {}).get("list_id")
     entry_id = event.get("id", {}).get("entry_id")
-    parent_record_id = event.get("parent_record_id") # Para el link
+    
+    # IMPORTANTE: El ID de la empresa viene en el evento
+    parent_record_id = event.get("parent_record_id")
 
-    if not list_id or not entry_id: return
+    if not list_id or not entry_id or not parent_record_id: return
 
-    # 1. Obtenemos la ENTRADA de la lista (Aquí usas tu nuevo método)
-    # Esto traerá 'entry_values' (datos de la lista) y 'values' (datos del padre)
+    # 1. Obtenemos la ENTRADA (para validar los campos de lista: ARR, Deal Owner...)
     entry_data = await attio.get_entry(list_id, entry_id)
     if not entry_data: return
 
-    # 2. Validamos (Tu validate_fields buscará en 'entry_values' gracias al cambio que hicimos)
+    # 2. Validamos sobre la entrada
     missing = attio.validate_fields(entry_data, REQUIRED_FIELDS_FAST_TRACK)
 
     if missing:
-        name = get_record_name(entry_data)
-        msg = f"*{name}* movida a Fast Tracks sin datos. Faltan: `{', '.join(missing)}`"
+        # 3. EL CAMBIO CLAVE:
+        # Como entry_data no tiene el nombre, descargamos la EMPRESA usando el ID padre
+        company_record = await attio.get_record("companies", parent_record_id)
         
-        # Usamos el parent_id para que el link lleve a la ficha de la empresa
+        # Ahora sacamos el nombre de la empresa (si falla la descarga, ponemos "Compañía")
+        name = get_record_name(company_record) if company_record else "Compañía"
+        
+        msg = f"*{name}* movida a Fast Tracks sin datos. Faltan: `{', '.join(missing)}`"
         url = f"https://app.attio.com/deceleraventures/company/{parent_record_id}"
         await send_slack_alert(msg, url)
 
 
-def get_record_name(data: dict) -> str:
-    """
-    Intenta extraer el nombre del registro, soportando dos formatos:
-    1. Objeto directo (ej: Company) -> Busca en 'values.name'
-    2. Entrada de lista (ej: Entry) -> Busca en 'parent_record.values.name'
-    """
+def get_record_name(record: dict) -> str:
+    """Extrae el nombre de un registro de empresa estándar"""
     try:
-        # ESTRATEGIA 1: Es un registro normal (Company)
-        # El nombre está directamente en 'values'
-        if "values" in data and "name" in data["values"]:
-            # Verificamos que la lista no esté vacía
-            if len(data["values"]["name"]) > 0:
-                return data["values"]["name"][0]["value"]
-        
-        # ESTRATEGIA 2: Es una entrada de lista (Entry)
-        # Los datos de la empresa suelen venir dentro de 'parent_record'
-        if "parent_record" in data:
-            parent = data["parent_record"]
-            # Repetimos la búsqueda dentro del padre
-            if "values" in parent and "name" in parent["values"]:
-                if len(parent["values"]["name"]) > 0:
-                    return parent["values"]["name"][0]["value"]
-            
-        # Fallback si no encuentra nada
+        # Ahora siempre recibiremos un record completo (con values)
+        if "values" in record and "name" in record["values"]:
+            vals = record["values"]["name"]
+            if len(vals) > 0:
+                return vals[0]["value"]
         return "Compañía"
-
-    except Exception:
-        # Si la estructura JSON cambia o es inesperada, no rompemos el programa
+    except:
         return "Compañía"
 
 
