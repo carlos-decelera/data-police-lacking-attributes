@@ -6,8 +6,8 @@ app = FastAPI()
 attio = AttioService()
 
 # --- TUS CAMPOS A VIGILAR ---
-REQUIRED_FIELDS_COMPANY = ["domains", "name", "reference_6", "reference_explanation"]
-REQUIRED_FIELDS_FAST_TRACK = ["fast_track_status_6", "owner", "date_sourced"]
+REQUIRED_FIELDS_COMPANY = ["domains", "name"]
+REQUIRED_FIELDS_FAST_TRACK = ["fast_track_status_6", "owner", "date_first_contact_1"]
 
 # --- LÓGICA DE NEGOCIO ---
 
@@ -29,29 +29,59 @@ async def handle_company_created(event: dict):
 
 
 async def handle_fast_track_entry(event: dict):
-    # ¡OPTIMIZACIÓN GRACIAS A TU JSON!
-    # El ID de la empresa ya viene directo en el evento
-    parent_record_id = event.get("parent_record_id")
-    
-    if not parent_record_id: return
+    """Caso 2: Se añade una entrada a la lista Fast Tracks"""
+    # Obtenemos IDs del evento
+    list_id = event.get("id", {}).get("list_id")
+    entry_id = event.get("id", {}).get("entry_id")
+    parent_record_id = event.get("parent_record_id") # Para el link
 
-    # Directamente consultamos los datos de la empresa
-    record = await attio.get_record("companies", parent_record_id)
-    if not record: return
+    if not list_id or not entry_id: return
 
-    missing = attio.validate_fields(record, REQUIRED_FIELDS_FAST_TRACK)
+    # 1. Obtenemos la ENTRADA de la lista (Aquí usas tu nuevo método)
+    # Esto traerá 'entry_values' (datos de la lista) y 'values' (datos del padre)
+    entry_data = await attio.get_entry(list_id, entry_id)
+    if not entry_data: return
+
+    # 2. Validamos (Tu validate_fields buscará en 'entry_values' gracias al cambio que hicimos)
+    missing = attio.validate_fields(entry_data, REQUIRED_FIELDS_FAST_TRACK)
 
     if missing:
-        name = get_record_name(record)
+        name = get_record_name(entry_data)
         msg = f"*{name}* movida a Fast Tracks sin datos. Faltan: `{', '.join(missing)}`"
+        
+        # Usamos el parent_id para que el link lleve a la ficha de la empresa
         url = f"https://app.attio.com/deceleraventures/company/{parent_record_id}"
         await send_slack_alert(msg, url)
 
 
-def get_record_name(record: dict) -> str:
+def get_record_name(data: dict) -> str:
+    """
+    Intenta extraer el nombre del registro, soportando dos formatos:
+    1. Objeto directo (ej: Company) -> Busca en 'values.name'
+    2. Entrada de lista (ej: Entry) -> Busca en 'parent_record.values.name'
+    """
     try:
-        return record["values"]["name"][0]["value"]
-    except:
+        # ESTRATEGIA 1: Es un registro normal (Company)
+        # El nombre está directamente en 'values'
+        if "values" in data and "name" in data["values"]:
+            # Verificamos que la lista no esté vacía
+            if len(data["values"]["name"]) > 0:
+                return data["values"]["name"][0]["value"]
+        
+        # ESTRATEGIA 2: Es una entrada de lista (Entry)
+        # Los datos de la empresa suelen venir dentro de 'parent_record'
+        if "parent_record" in data:
+            parent = data["parent_record"]
+            # Repetimos la búsqueda dentro del padre
+            if "values" in parent and "name" in parent["values"]:
+                if len(parent["values"]["name"]) > 0:
+                    return parent["values"]["name"][0]["value"]
+            
+        # Fallback si no encuentra nada
+        return "Compañía"
+
+    except Exception:
+        # Si la estructura JSON cambia o es inesperada, no rompemos el programa
         return "Compañía"
 
 

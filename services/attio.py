@@ -20,12 +20,22 @@ class AttioService:
                 return res.json().get("data")
             return None
 
+    async def get_entry(self, list_slug: str, entry_id: str):
+        """Descargamos los datos de la entrada de la lista"""
+        url = f"{self.base_url}/lists/{list_slug}/entries/{entry_id}"
+
+        async with httpx.AsyncClient() as client:
+            res = await client.get(url, headers=self.headers)
+            if res.status_code == 200:
+                return res.json().get("data")
+            return None
+
     def validate_fields(self, record_data: dict, required_slugs: list):
         """Revisa qué campos faltan"""
         missing = []
         if not record_data: return missing
 
-        values = record_data.get("values", {})
+        values = record_data.get("values", {}) or record_data.get("entry_values", {})
         for slug in required_slugs:
             field_val = values.get(slug)
             if not field_val or len(field_val) == 0:
