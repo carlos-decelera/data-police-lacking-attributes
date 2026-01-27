@@ -6,8 +6,8 @@ app = FastAPI()
 attio = AttioService()
 
 # --- TUS CAMPOS A VIGILAR ---
-REQUIRED_FIELDS_COMPANY = ["domain", "description", "linkedin"]
-REQUIRED_FIELDS_FAST_TRACK = ["deal_owner", "next_step", "estimated_arr"]
+REQUIRED_FIELDS_COMPANY = ["domains", "name", "reference_6", "reference_explanation"]
+REQUIRED_FIELDS_FAST_TRACK = ["fast_track_status_6", "owner", "date_sourced"]
 
 # --- LÓGICA DE NEGOCIO ---
 
@@ -76,5 +76,6 @@ async def receive_attio_webhook(request: Request, bg_tasks: BackgroundTasks):
         
         elif event_type == "list-entry.created":
             bg_tasks.add_task(handle_fast_track_entry, event)
+
 
     return {"status": "ok"}
