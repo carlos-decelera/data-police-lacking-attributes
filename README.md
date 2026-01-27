@@ -1,27 +1,31 @@
 ```mermaid
 graph TD
-    A[Webhook de Attio] -->|POST /missing-fields| B(main.py: receive_attio_webhook)
-    B --> C{¿Actor es miembro?}
-    C -- No --> D[Ignorar Evento]
-    C -- Sí --> E{Tipo de Evento}
+    A[Webhook de Attio] -->|Envía JSON con eventos| B(main.py: Router Principal)
+    
+    B --> C{¿Actor humano?}
+    C -- No --> D[Ignorar: Evita bucles de bots]
+    C -- Sí --> E{¿Qué ocurrió?}
 
-    %% Caso 1: Creación de Empresa
-    E -- record.created --> F[handle_company_created]
-    F --> G[AttioService: get_record]
-    G --> H[AttioService: validate_fields]
-    H --> I{¿Faltan campos?}
-    I -- Sí --> J[slack.py: send_slack_alert]
+    %% Flujo de Creación
+    E -- Nueva Compañía --> F[handle_company_created]
+    F -->|Consulta API| G[Descarga datos completos del Record]
+    G --> H[Revisa: 'domains' y 'name']
+    H --> I{¿Falta información?}
+    I -- Sí --> J[slack.py: Envía Alerta]
 
-    %% Caso 2: Entrada en Fast Track
-    E -- list-entry.created --> K[handle_fast_track_entry]
-    K --> L[AttioService: get_entry]
-    L --> M[AttioService: get_record ID Padre]
-    M --> N[AttioService: validate_fields]
-    N --> O{¿Faltan campos?}
+    %% Flujo de Fast Track
+    E -- Movido a Fast Track --> K[handle_fast_track_entry]
+    K -->|Consulta API| L[Descarga datos de la Entrada en Lista]
+    L -->|Usa parent_record_id| M[Obtiene Nombre de la Empresa]
+    M --> N[Revisa: 'owner', 'status' y 'fecha']
+    N --> O{¿Campos vacíos?}
     O -- Sí --> J
 
-    %% Estilos
+    %% Detalles de la notificación
+    J --> P[Crea link directo a Attio y avisa por canal]
+
+    %% Estilos para que sea vea profesional
     style B fill:#f9f,stroke:#333,stroke-width:2px
     style J fill:#4A154B,color:#fff,stroke:#333
-    style G fill:#fff,stroke:#333
-    style L fill:#fff,stroke:#333
+    style F fill:#e1f5fe,stroke:#01579b
+    style K fill:#fff3e0,stroke:#e65100
