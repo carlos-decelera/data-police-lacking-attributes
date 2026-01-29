@@ -14,7 +14,8 @@ REQUIRED_FIELDS_FAST_TRACK = ["fast_track_status_6", "owner", "date_first_contac
 async def handle_company_created(event: dict):
     # El ID está dentro de 'id' en creación de records
     record_id = event.get("id", {}).get("record_id")
-    if not record_id: return
+    object_id = event.get("id", {}).get("object_id")
+    if not record_id or not object_id or object_id != "74c77546-6a6f-4aab-9a19-536d8cfed976": return
 
     record = await attio.get_record("companies", record_id)
     if not record: return
@@ -36,7 +37,7 @@ async def handle_fast_track_entry(event: dict):
     # IMPORTANTE: El ID de la empresa viene en el evento
     parent_record_id = event.get("parent_record_id")
 
-    if not list_id or not entry_id or not parent_record_id: return
+    if not list_id or not entry_id or not parent_record_id or list_id != "c1b474e0-90cc-48c3-a98d-135da4a71db0": return
 
     # 1. Obtenemos la ENTRADA (para validar los campos de lista: ARR, Deal Owner...)
     entry_data = await attio.get_entry(list_id, entry_id)
