@@ -6,7 +6,7 @@ app = FastAPI()
 attio = AttioService()
 
 # --- TUS CAMPOS A VIGILAR ---
-REQUIRED_FIELDS_COMPANY = ["domains", "name"]
+REQUIRED_FIELDS_COMPANY = ["domains"]
 REQUIRED_FIELDS_FAST_TRACK = ["fast_track_status_6", "owner", "date_first_contact_1"]
 
 # --- LÓGICA DE NEGOCIO ---
